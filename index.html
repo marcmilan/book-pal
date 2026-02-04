@@ -490,27 +490,38 @@
                 }
 
                 const data = await response.json();
+                console.log('Book API response:', data);
                 
                 // Get additional details
                 let authors = [];
+                console.log('Author data from API:', data.authors);
+                console.log('By statement from API:', data.by_statement);
+                
                 if (data.authors) {
                     for (let author of data.authors) {
                         try {
+                            console.log('Fetching author:', author.key);
                             const authorRes = await fetch(`https://openlibrary.org${author.key}.json`);
                             if (authorRes.ok) {
                                 const authorData = await authorRes.json();
+                                console.log('Author data received:', authorData);
                                 if (authorData.name) {
                                     authors.push(authorData.name);
                                 }
+                            } else {
+                                console.log('Author fetch failed with status:', authorRes.status);
                             }
                         } catch (error) {
-                            console.log('Could not fetch author:', author.key);
+                            console.log('Could not fetch author:', author.key, error);
                         }
                     }
                 }
                 
+                console.log('Authors array after fetching:', authors);
+                
                 // Fallback: try to get authors from by_statement if API calls failed
                 if (authors.length === 0 && data.by_statement) {
+                    console.log('Using by_statement fallback:', data.by_statement);
                     authors = [data.by_statement];
                 }
 
