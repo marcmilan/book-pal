@@ -539,19 +539,25 @@
 
         // Save book to library
         async function saveBook() {
-            if (!currentBook) return;
+            if (!currentBook) {
+                showStatus('No book to save', 'error');
+                return;
+            }
+
+            console.log('Attempting to save book:', currentBook);
 
             try {
                 // Check if book already exists
+                console.log('Checking for existing book...');
                 const { data: existing, error: checkError } = await supabaseClient
                     .from('books')
                     .select('isbn')
                     .eq('isbn', currentBook.isbn)
-                    .maybeSingle(); // Use maybeSingle instead of single to avoid error when no match
+                    .maybeSingle();
 
                 if (checkError) {
                     console.error('Check error:', checkError);
-                    showStatus(`Error: ${checkError.message}`, 'error');
+                    showStatus(`Check error: ${checkError.message}`, 'error');
                     return;
                 }
 
@@ -561,24 +567,29 @@
                 }
 
                 // Insert new book
+                console.log('Inserting new book...');
+                const bookData = {
+                    title: currentBook.title,
+                    authors: currentBook.authors,
+                    publisher: currentBook.publisher,
+                    publish_date: currentBook.publishDate,
+                    isbn: currentBook.isbn,
+                    cover_url: currentBook.coverUrl,
+                    user_id: null
+                };
+                console.log('Book data to insert:', bookData);
+
                 const { data, error } = await supabaseClient
                     .from('books')
-                    .insert([{
-                        title: currentBook.title,
-                        authors: currentBook.authors,
-                        publisher: currentBook.publisher,
-                        publish_date: currentBook.publishDate,
-                        isbn: currentBook.isbn,
-                        cover_url: currentBook.coverUrl,
-                        user_id: null // We'll add auth later
-                    }]);
+                    .insert([bookData]);
 
                 if (error) {
-                    console.error('Save error:', error);
-                    showStatus(`Error: ${error.message || 'Could not save book'}`, 'error');
+                    console.error('Insert error:', error);
+                    showStatus(`Insert error: ${error.message || JSON.stringify(error)}`, 'error');
                     return;
                 }
 
+                console.log('Book saved successfully!');
                 showStatus('Book saved to library!', 'success');
                 
                 // Reset
@@ -589,8 +600,8 @@
                 }, 1500);
 
             } catch (error) {
-                console.error('Save error:', error);
-                showStatus('Error saving book', 'error');
+                console.error('Catch block error:', error);
+                showStatus(`Exception: ${error.message || error.toString()}`, 'error');
             }
         }
 
