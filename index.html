@@ -524,6 +524,35 @@
                     console.log('Using by_statement fallback:', data.by_statement);
                     authors = [data.by_statement];
                 }
+                
+                // Fallback: try to get authors from the work if edition has no author
+                if (authors.length === 0 && data.works && data.works.length > 0) {
+                    try {
+                        console.log('Fetching authors from work:', data.works[0].key);
+                        const workRes = await fetch(`https://openlibrary.org${data.works[0].key}.json`);
+                        if (workRes.ok) {
+                            const workData = await workRes.json();
+                            console.log('Work data received:', workData);
+                            if (workData.authors) {
+                                for (let author of workData.authors) {
+                                    try {
+                                        const authorRes = await fetch(`https://openlibrary.org${author.author.key}.json`);
+                                        if (authorRes.ok) {
+                                            const authorData = await authorRes.json();
+                                            if (authorData.name) {
+                                                authors.push(authorData.name);
+                                            }
+                                        }
+                                    } catch (error) {
+                                        console.log('Could not fetch work author:', error);
+                                    }
+                                }
+                            }
+                        }
+                    } catch (error) {
+                        console.log('Could not fetch work data:', error);
+                    }
+                }
 
                 currentBook = {
                     isbn: isbn,
