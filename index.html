@@ -495,16 +495,29 @@
                 let authors = [];
                 if (data.authors) {
                     for (let author of data.authors) {
-                        const authorRes = await fetch(`https://openlibrary.org${author.key}.json`);
-                        const authorData = await authorRes.json();
-                        authors.push(authorData.name);
+                        try {
+                            const authorRes = await fetch(`https://openlibrary.org${author.key}.json`);
+                            if (authorRes.ok) {
+                                const authorData = await authorRes.json();
+                                if (authorData.name) {
+                                    authors.push(authorData.name);
+                                }
+                            }
+                        } catch (error) {
+                            console.log('Could not fetch author:', author.key);
+                        }
                     }
+                }
+                
+                // Fallback: try to get authors from by_statement if API calls failed
+                if (authors.length === 0 && data.by_statement) {
+                    authors = [data.by_statement];
                 }
 
                 currentBook = {
                     isbn: isbn,
                     title: data.title || 'Unknown Title',
-                    authors: authors.join(', ') || 'Unknown Author',
+                    authors: authors.length > 0 ? authors.join(', ') : 'Unknown Author',
                     publisher: data.publishers ? data.publishers.join(', ') : 'Unknown Publisher',
                     publishDate: data.publish_date || 'Unknown',
                     coverUrl: data.covers ? `https://covers.openlibrary.org/b/id/${data.covers[0]}-M.jpg` : '',
