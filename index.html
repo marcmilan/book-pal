@@ -547,7 +547,13 @@
                     .from('books')
                     .select('isbn')
                     .eq('isbn', currentBook.isbn)
-                    .single();
+                    .maybeSingle(); // Use maybeSingle instead of single to avoid error when no match
+
+                if (checkError) {
+                    console.error('Check error:', checkError);
+                    showStatus(`Error: ${checkError.message}`, 'error');
+                    return;
+                }
 
                 if (existing) {
                     showStatus('Book already in library!', 'error');
@@ -569,7 +575,7 @@
 
                 if (error) {
                     console.error('Save error:', error);
-                    showStatus('Error saving book', 'error');
+                    showStatus(`Error: ${error.message || 'Could not save book'}`, 'error');
                     return;
                 }
 
