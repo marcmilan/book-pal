@@ -311,13 +311,117 @@
             background: #d1ecf1;
             color: #0c5460;
         }
+
+/* Auth Modal Styles */
+.auth-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.auth-overlay.show {
+    display: flex;
+}
+
+.auth-modal {
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    max-width: 400px;
+    width: 90%;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.auth-modal h2 {
+    font-size: 28px;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.auth-modal p {
+    color: #666;
+    margin-bottom: 30px;
+}
+
+.auth-form input {
+    width: 100%;
+    padding: 14px;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 16px;
+    margin-bottom: 15px;
+}
+
+.auth-form button {
+    width: 100%;
+    padding: 16px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 15px;
+}
+
+.auth-switch {
+    text-align: center;
+    color: #666;
+    margin-top: 20px;
+}
+
+.auth-switch a {
+    color: #667eea;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.user-info {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    font-size: 14px;
+}
+
+.user-info.show {
+    display: flex;
+}
+
+.logout-btn {
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 6px;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+}
+        
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>📚 Book Pal</h1>
-        <p>Scan, save, and organize your books</p>
+<div class="header">
+    <div style="display: flex; justify-content: space-between; align-items: center; max-width: 800px; margin: 0 auto;">
+        <div>
+            <h1>📚 Book Pal</h1>
+            <p>Scan, save, and organize your books</p>
+        </div>
+        <div id="userInfo" class="user-info">
+            <span id="userEmail"></span>
+            <button class="logout-btn" onclick="handleLogout()">Logout</button>
+        </div>
     </div>
+</div>
+
 
     <div class="container">
         <div class="tabs">
@@ -383,14 +487,115 @@
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtjcHh0ZnBjcndvdWdwZG5hdWZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyMzk4MTEsImV4cCI6MjA4NTgxNTgxMX0.gpeA8MJpQlW4YI1IL5FfkwmAflZOFeFYPBP2jp67POM';
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+
+        // Auth state
+let currentUser = null;
+
+// Check if user is already logged in
+async function checkAuth() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    
+    if (session) {
+        currentUser = session.user;
+        showAuthenticatedState();
+    } else {
+        showAuthModal();
+    }
+}
+
+function showAuthenticatedState() {
+    document.getElementById('authOverlay').classList.remove('show');
+    document.getElementById('userInfo').classList.add('show');
+    document.getElementById('userEmail').textContent = currentUser.email;
+    loadLibrary();
+}
+
+function showAuthModal() {
+    document.getElementById('authOverlay').classList.add('show');
+}
+
+function switchToSignup() {
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('signupForm').style.display = 'block';
+}
+
+function switchToLogin() {
+    document.getElementById('signupForm').style.display = 'none';
+    document.getElementById('loginForm').style.display = 'block';
+}
+
+async function handleLogin() {
+    const email = document.getElementById('loginEmail').value;
+    const password = document.getElementById('loginPassword').value;
+
+    if (!email || !password) {
+        showStatus('Please enter email and password', 'error');
+        return;
+    }
+
+    try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+
+        if (error) throw error;
+
+        currentUser = data.user;
+        showAuthenticatedState();
+        showStatus('Welcome back!', 'success');
+    } catch (error) {
+        showStatus(error.message, 'error');
+    }
+}
+
+async function handleSignup() {
+    const email = document.getElementById('signupEmail').value;
+    const password = document.getElementById('signupPassword').value;
+
+    if (!email || !password) {
+        showStatus('Please enter email and password', 'error');
+        return;
+    }
+
+    if (password.length < 6) {
+        showStatus('Password must be at least 6 characters', 'error');
+        return;
+    }
+
+    try {
+        const { data, error } = await supabaseClient.auth.signUp({
+            email: email,
+            password: password
+        });
+
+        if (error) throw error;
+
+        currentUser = data.user;
+        showAuthenticatedState();
+        showStatus('Account created! Welcome to Book Pal', 'success');
+    } catch (error) {
+        showStatus(error.message, 'error');
+    }
+}
+
+async function handleLogout() {
+    await supabaseClient.auth.signOut();
+    currentUser = null;
+    document.getElementById('userInfo').classList.remove('show');
+    showAuthModal();
+    showStatus('Logged out successfully', 'success');
+}
+
+
         let currentBook = null;
         let scanning = false;
         let codeReader = null;
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            loadLibrary();
-        });
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
+});
 
         // Tab switching
         function switchTab(tab) {
@@ -628,7 +833,7 @@
                     publish_date: currentBook.publishDate,
                     isbn: currentBook.isbn,
                     cover_url: currentBook.coverUrl,
-                    user_id: null
+                    user_id: currentUser.id
                 };
                 console.log('Book data to insert:', bookData);
 
@@ -818,5 +1023,32 @@
         // Event listeners
         document.getElementById('scanBtn').addEventListener('click', startScanning);
     </script>
+
+    <!-- Auth Modal -->
+<div id="authOverlay" class="auth-overlay">
+    <div class="auth-modal">
+        <div id="loginForm" class="auth-form">
+            <h2>Welcome Back</h2>
+            <p>Sign in to access your library</p>
+            <input type="email" id="loginEmail" placeholder="Email">
+            <input type="password" id="loginPassword" placeholder="Password">
+            <button onclick="handleLogin()">Sign In</button>
+            <div class="auth-switch">
+                Don't have an account? <a onclick="switchToSignup()">Sign up</a>
+            </div>
+        </div>
+
+        <div id="signupForm" class="auth-form" style="display: none;">
+            <h2>Create Account</h2>
+            <p>Start building your book library</p>
+            <input type="email" id="signupEmail" placeholder="Email">
+            <input type="password" id="signupPassword" placeholder="Password (min 6 characters)">
+            <button onclick="handleSignup()">Create Account</button>
+            <div class="auth-switch">
+                Already have an account? <a onclick="switchToLogin()">Sign in</a>
+            </div>
+        </div>
+    </div>
+</div>
 </body>
 </html>
