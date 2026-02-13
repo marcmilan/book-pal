@@ -529,7 +529,7 @@ async function handleLogin() {
     const password = document.getElementById('loginPassword').value;
 
     if (!email || !password) {
-        showStatus('Please enter email and password', 'error');
+        showAuthStatus('Please enter email and password', 'error');
         return;
     }
 
@@ -545,7 +545,7 @@ async function handleLogin() {
         showAuthenticatedState();
         showStatus('Welcome back!', 'success');
     } catch (error) {
-        showStatus(error.message, 'error');
+        showAuthStatus(error.message, 'error');
     }
 }
 
