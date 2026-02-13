@@ -554,12 +554,12 @@ async function handleSignup() {
     const password = document.getElementById('signupPassword').value;
 
     if (!email || !password) {
-        showStatus('Please enter email and password', 'error');
+        showAuthStatus('Please enter email and password', 'error');
         return;
     }
 
     if (password.length < 6) {
-        showStatus('Password must be at least 6 characters', 'error');
+        showAuthStatus('Password must be at least 6 characters', 'error');
         return;
     }
 
@@ -575,8 +575,20 @@ async function handleSignup() {
         showAuthenticatedState();
         showStatus('Account created! Welcome to Book Pal', 'success');
     } catch (error) {
-        showStatus(error.message, 'error');
+        showAuthStatus(error.message, 'error');
     }
+}
+
+function showAuthStatus(message, type) {
+    const statusEl = document.getElementById('authStatus');
+    statusEl.textContent = message;
+    statusEl.className = `status-message show ${type}`;
+    statusEl.style.display = 'block';
+
+    setTimeout(() => {
+        statusEl.style.display = 'none';
+        statusEl.classList.remove('show');
+    }, 4000);
 }
 
 async function handleLogout() {
@@ -695,49 +707,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const data = await response.json();
-                console.log('Book API response:', data);
-                
+
                 // Get additional details
                 let authors = [];
-                console.log('Author data from API:', data.authors);
-                console.log('By statement from API:', data.by_statement);
-                
+
                 if (data.authors) {
                     for (let author of data.authors) {
                         try {
-                            console.log('Fetching author:', author.key);
                             const authorRes = await fetch(`https://openlibrary.org${author.key}.json`);
                             if (authorRes.ok) {
                                 const authorData = await authorRes.json();
-                                console.log('Author data received:', authorData);
                                 if (authorData.name) {
                                     authors.push(authorData.name);
                                 }
-                            } else {
-                                console.log('Author fetch failed with status:', authorRes.status);
                             }
                         } catch (error) {
-                            console.log('Could not fetch author:', author.key, error);
+                            // Author fetch failed, will try fallbacks
                         }
                     }
                 }
-                
-                console.log('Authors array after fetching:', authors);
-                
+
                 // Fallback: try to get authors from by_statement if API calls failed
                 if (authors.length === 0 && data.by_statement) {
-                    console.log('Using by_statement fallback:', data.by_statement);
                     authors = [data.by_statement];
                 }
-                
+
                 // Fallback: try to get authors from the work if edition has no author
                 if (authors.length === 0 && data.works && data.works.length > 0) {
                     try {
-                        console.log('Fetching authors from work:', data.works[0].key);
                         const workRes = await fetch(`https://openlibrary.org${data.works[0].key}.json`);
                         if (workRes.ok) {
                             const workData = await workRes.json();
-                            console.log('Work data received:', workData);
                             if (workData.authors) {
                                 for (let author of workData.authors) {
                                     try {
@@ -749,13 +749,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                             }
                                         }
                                     } catch (error) {
-                                        console.log('Could not fetch work author:', error);
+                                        // Work author fetch failed
                                     }
                                 }
                             }
                         }
                     } catch (error) {
-                        console.log('Could not fetch work data:', error);
+                        // Work data fetch failed
                     }
                 }
 
@@ -802,11 +802,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            console.log('Attempting to save book:', currentBook);
-
             try {
                 // Check if book already exists
-                console.log('Checking for existing book...');
                 const { data: existing, error: checkError } = await supabaseClient
                     .from('books')
                     .select('isbn')
@@ -825,7 +822,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 // Insert new book
-                console.log('Inserting new book...');
                 const bookData = {
                     title: currentBook.title,
                     authors: currentBook.authors,
@@ -835,8 +831,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     cover_url: currentBook.coverUrl,
                     user_id: currentUser.id
                 };
-                console.log('Book data to insert:', bookData);
-
                 const { data, error } = await supabaseClient
                     .from('books')
                     .insert([bookData]);
@@ -847,7 +841,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                console.log('Book saved successfully!');
                 showStatus('Book saved to library!', 'success');
                 
                 // Reset
@@ -1027,6 +1020,8 @@ document.addEventListener('DOMContentLoaded', () => {
     <!-- Auth Modal -->
 <div id="authOverlay" class="auth-overlay">
     <div class="auth-modal">
+        <div id="authStatus" class="status-message" style="display: none;"></div>
+
         <div id="loginForm" class="auth-form">
             <h2>Welcome Back</h2>
             <p>Sign in to access your library</p>
