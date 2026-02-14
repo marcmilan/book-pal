@@ -1320,6 +1320,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="delete-btn" onclick="deleteBook('${book.id}')">Delete</button>
                 </div>
             `).join('');
+            attachCoverClickHandlers();
+        }
+
+        // Attach click handlers to library cover images
+        function attachCoverClickHandlers() {
+            document.querySelectorAll('#bookList img.book-item-cover').forEach(img => {
+                img.onclick = (e) => {
+                    e.stopPropagation();
+                    openCoverPreview(img.src);
+                };
+            });
         }
 
         // Filter books
@@ -1355,6 +1366,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="delete-btn" onclick="deleteBook('${book.id}')">Delete</button>
                 </div>
             `).join('');
+            attachCoverClickHandlers();
         }
 
         // Delete book
