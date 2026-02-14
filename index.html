@@ -166,7 +166,13 @@
             background: #e0e0e0;
         }
 
-        .cover-picker-trigger {
+        .cover-area {
+            width: 100px;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .cover-placeholder {
             width: 100px;
             height: 150px;
             border-radius: 8px;
@@ -182,42 +188,63 @@
             font-size: 12px;
             text-align: center;
             transition: border-color 0.2s, background 0.2s;
-            flex-shrink: 0;
-            position: relative;
-            overflow: hidden;
         }
 
-        .cover-picker-trigger:hover {
+        .cover-placeholder:hover {
             border-color: #667eea;
             background: #f0f0ff;
             color: #667eea;
         }
 
-        .cover-picker-trigger img {
-            width: 100%;
-            height: 100%;
+        .cover-thumbnail {
+            width: 100px;
+            height: 150px;
             object-fit: cover;
-            border-radius: 6px;
-            position: absolute;
-            top: 0;
-            left: 0;
+            border-radius: 8px;
+            cursor: pointer;
+            display: block;
         }
 
-        .cover-picker-trigger .cover-change-hint {
-            display: none;
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0,0,0,0.6);
-            color: white;
+        .cover-change-btn {
+            display: block;
+            width: 100%;
+            margin-top: 4px;
+            padding: 3px 0;
+            background: none;
+            border: none;
+            color: #667eea;
             font-size: 11px;
-            padding: 4px;
+            cursor: pointer;
             text-align: center;
         }
 
-        .cover-picker-trigger:hover .cover-change-hint {
-            display: block;
+        .cover-change-btn:hover {
+            text-decoration: underline;
+        }
+
+        .cover-preview-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 1001;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .cover-preview-overlay.show {
+            display: flex;
+        }
+
+        .cover-preview-overlay img {
+            max-width: 90%;
+            max-height: 85vh;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
         }
 
         .cover-modal-overlay {
@@ -652,12 +679,7 @@
 
             <div id="bookResult" class="book-result">
                 <div class="book-info">
-                    <div id="coverPickerTrigger" class="cover-picker-trigger" onclick="openCoverPicker()">
-                        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                        </svg>
-                        <span>Tap to choose cover</span>
-                    </div>
+                    <div id="coverArea" class="cover-area"></div>
                     <div class="book-details">
                         <h3 id="bookTitle"></h3>
                         <p id="bookAuthor"></p>
@@ -666,6 +688,11 @@
                     </div>
                 </div>
                 <button class="save-btn" onclick="saveBook()">Save to Library</button>
+            </div>
+
+            <!-- Cover Preview Overlay -->
+            <div id="coverPreview" class="cover-preview-overlay" onclick="closeCoverPreview()">
+                <img id="coverPreviewImg" src="" alt="Cover preview">
             </div>
 
             <!-- Cover Picker Modal -->
@@ -1043,26 +1070,38 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('bookPublisher').textContent = `Publisher: ${book.publisher}`;
             document.getElementById('bookIsbn').textContent = `ISBN: ${book.isbn}`;
 
-            updateCoverTrigger(book.coverUrl);
+            updateCoverArea(book.coverUrl);
 
             document.getElementById('bookResult').classList.add('show');
         }
 
-        function updateCoverTrigger(coverUrl) {
-            const trigger = document.getElementById('coverPickerTrigger');
+        function updateCoverArea(coverUrl) {
+            const area = document.getElementById('coverArea');
             if (coverUrl) {
-                trigger.innerHTML = `
-                    <img src="${coverUrl}" alt="Book cover">
-                    <span class="cover-change-hint">Change</span>
+                area.innerHTML = `
+                    <img class="cover-thumbnail" src="${coverUrl}" alt="Book cover" onclick="openCoverPreview('${coverUrl}')">
+                    <button class="cover-change-btn" onclick="openCoverPicker()">Change cover</button>
                 `;
             } else {
-                trigger.innerHTML = `
-                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                    </svg>
-                    <span>Tap to choose cover</span>
+                area.innerHTML = `
+                    <div class="cover-placeholder" onclick="openCoverPicker()">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <span>Tap to choose cover</span>
+                    </div>
                 `;
             }
+        }
+
+        function openCoverPreview(coverUrl) {
+            const largeUrl = coverUrl.replace('-M.jpg', '-L.jpg');
+            document.getElementById('coverPreviewImg').src = largeUrl;
+            document.getElementById('coverPreview').classList.add('show');
+        }
+
+        function closeCoverPreview() {
+            document.getElementById('coverPreview').classList.remove('show');
         }
 
         // Cover picker functions
@@ -1148,7 +1187,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     currentBook.coverUrl = `https://covers.openlibrary.org/b/id/${selectedCoverId}-M.jpg`;
                 }
-                updateCoverTrigger(currentBook.coverUrl);
+                updateCoverArea(currentBook.coverUrl);
             }
             closeCoverPicker();
         }
