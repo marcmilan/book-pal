@@ -891,6 +891,15 @@ async function handleLogout() {
         // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
+
+    // Event delegation for library cover taps
+    document.getElementById('bookList').addEventListener('click', (e) => {
+        const coverImg = e.target.closest('img.book-item-cover[data-cover-url]');
+        if (coverImg) {
+            e.stopPropagation();
+            openCoverPreview(coverImg.dataset.coverUrl);
+        }
+    });
 });
 
         // Tab switching
@@ -1301,7 +1310,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             bookList.innerHTML = library.map((book) => `
                 <div class="book-item">
-                    ${book.cover_url ? `<img src="${book.cover_url}" class="book-item-cover" alt="${book.title}" onclick="event.stopPropagation(); openCoverPreview('${book.cover_url}')">` : '<div class="book-item-cover"></div>'}
+                    ${book.cover_url ? `<img src="${book.cover_url}" class="book-item-cover" alt="Book cover" data-cover-url="${book.cover_url}">` : '<div class="book-item-cover"></div>'}
                     <div class="book-item-info">
                         <h4>${book.title}</h4>
                         <p>${book.authors}</p>
@@ -1311,6 +1320,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="delete-btn" onclick="deleteBook('${book.id}')">Delete</button>
                 </div>
             `).join('');
+            attachCoverClickHandlers();
+        }
+
+        // Attach click handlers to library cover images
+        function attachCoverClickHandlers() {
+            document.querySelectorAll('#bookList img.book-item-cover').forEach(img => {
+                img.onclick = (e) => {
+                    e.stopPropagation();
+                    openCoverPreview(img.src);
+                };
+            });
         }
 
         // Filter books
@@ -1336,7 +1356,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             bookList.innerHTML = filtered.map(book => `
                 <div class="book-item">
-                    ${book.cover_url ? `<img src="${book.cover_url}" class="book-item-cover" alt="${book.title}" onclick="event.stopPropagation(); openCoverPreview('${book.cover_url}')">` : '<div class="book-item-cover"></div>'}
+                    ${book.cover_url ? `<img src="${book.cover_url}" class="book-item-cover" alt="Book cover" data-cover-url="${book.cover_url}">` : '<div class="book-item-cover"></div>'}
                     <div class="book-item-info">
                         <h4>${book.title}</h4>
                         <p>${book.authors}</p>
@@ -1346,6 +1366,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="delete-btn" onclick="deleteBook('${book.id}')">Delete</button>
                 </div>
             `).join('');
+            attachCoverClickHandlers();
         }
 
         // Delete book
