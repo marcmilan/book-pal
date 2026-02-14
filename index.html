@@ -690,23 +690,6 @@
                 </div>
                 <button class="save-btn" onclick="saveBook()">Save to Library</button>
             </div>
-
-            <!-- Cover Preview Overlay -->
-            <div id="coverPreview" class="cover-preview-overlay" onclick="closeCoverPreview()">
-                <img id="coverPreviewImg" src="" alt="Cover preview">
-            </div>
-
-            <!-- Cover Picker Modal -->
-            <div id="coverModal" class="cover-modal-overlay" onclick="if(event.target===this)closeCoverPicker()">
-                <div class="cover-modal">
-                    <h3>Choose a Cover</h3>
-                    <div id="coverGrid" class="cover-grid"></div>
-                    <div class="cover-modal-actions">
-                        <button class="cover-cancel-btn" onclick="closeCoverPicker()">Cancel</button>
-                        <button class="cover-select-btn" onclick="confirmCoverSelection()">Select</button>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- Library Tab -->
@@ -724,6 +707,23 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
                     </svg>
                     <p>No books yet. Start scanning!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cover Preview Overlay -->
+        <div id="coverPreview" class="cover-preview-overlay" onclick="closeCoverPreview()">
+            <img id="coverPreviewImg" src="" alt="Cover preview">
+        </div>
+
+        <!-- Cover Picker Modal -->
+        <div id="coverModal" class="cover-modal-overlay" onclick="if(event.target===this)closeCoverPicker()">
+            <div class="cover-modal">
+                <h3>Choose a Cover</h3>
+                <div id="coverGrid" class="cover-grid"></div>
+                <div class="cover-modal-actions">
+                    <button class="cover-cancel-btn" onclick="closeCoverPicker()">Cancel</button>
+                    <button class="cover-select-btn" onclick="confirmCoverSelection()">Select</button>
                 </div>
             </div>
         </div>
