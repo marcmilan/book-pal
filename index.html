@@ -1106,8 +1106,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function openCoverPreview(coverUrl) {
             const largeUrl = coverUrl.replace('-M.jpg', '-L.jpg');
-            document.getElementById('coverPreviewImg').src = largeUrl;
-            document.getElementById('coverPreview').classList.add('show');
+            const img = document.getElementById('coverPreviewImg');
+            const preview = document.getElementById('coverPreview');
+            if (img.src === largeUrl || img.src === new URL(largeUrl, location.href).href) {
+                preview.classList.add('show');
+            } else {
+                img.onload = () => preview.classList.add('show');
+                img.src = largeUrl;
+            }
         }
 
         function closeCoverPreview() {
