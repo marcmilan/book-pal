@@ -425,6 +425,7 @@
             object-fit: cover;
             border-radius: 6px;
             background: #e0e0e0;
+            cursor: pointer;
         }
 
         .book-item-info {
@@ -1300,7 +1301,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             bookList.innerHTML = library.map((book) => `
                 <div class="book-item">
-                    ${book.cover_url ? `<img src="${book.cover_url}" class="book-item-cover" alt="${book.title}">` : '<div class="book-item-cover"></div>'}
+                    ${book.cover_url ? `<img src="${book.cover_url}" class="book-item-cover" alt="${book.title}" onclick="event.stopPropagation(); openCoverPreview('${book.cover_url}')">` : '<div class="book-item-cover"></div>'}
                     <div class="book-item-info">
                         <h4>${book.title}</h4>
                         <p>${book.authors}</p>
@@ -1316,14 +1317,14 @@ document.addEventListener('DOMContentLoaded', () => {
         async function filterBooks() {
             const searchTerm = document.getElementById('searchBox').value.toLowerCase();
             const library = await getLibrary();
-            const filtered = library.filter(book => 
+            const filtered = library.filter(book =>
                 book.title.toLowerCase().includes(searchTerm) ||
                 book.authors.toLowerCase().includes(searchTerm) ||
                 book.isbn.includes(searchTerm)
             );
 
             const bookList = document.getElementById('bookList');
-            
+
             if (filtered.length === 0) {
                 bookList.innerHTML = `
                     <div class="empty-state">
@@ -1335,7 +1336,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             bookList.innerHTML = filtered.map(book => `
                 <div class="book-item">
-                    ${book.cover_url ? `<img src="${book.cover_url}" class="book-item-cover" alt="${book.title}">` : '<div class="book-item-cover"></div>'}
+                    ${book.cover_url ? `<img src="${book.cover_url}" class="book-item-cover" alt="${book.title}" onclick="event.stopPropagation(); openCoverPreview('${book.cover_url}')">` : '<div class="book-item-cover"></div>'}
                     <div class="book-item-info">
                         <h4>${book.title}</h4>
                         <p>${book.authors}</p>
