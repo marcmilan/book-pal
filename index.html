@@ -166,6 +166,162 @@
             background: #e0e0e0;
         }
 
+        .cover-picker-trigger {
+            width: 100px;
+            height: 150px;
+            border-radius: 8px;
+            background: #e0e0e0;
+            border: 2px dashed #bbb;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            color: #888;
+            font-size: 12px;
+            text-align: center;
+            transition: border-color 0.2s, background 0.2s;
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cover-picker-trigger:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+            color: #667eea;
+        }
+
+        .cover-picker-trigger img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 6px;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .cover-picker-trigger .cover-change-hint {
+            display: none;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            font-size: 11px;
+            padding: 4px;
+            text-align: center;
+        }
+
+        .cover-picker-trigger:hover .cover-change-hint {
+            display: block;
+        }
+
+        .cover-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1001;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .cover-modal-overlay.show {
+            display: flex;
+        }
+
+        .cover-modal {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .cover-modal h3 {
+            font-size: 18px;
+            margin-bottom: 16px;
+            color: #333;
+        }
+
+        .cover-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .cover-option {
+            cursor: pointer;
+            border: 3px solid transparent;
+            border-radius: 8px;
+            overflow: hidden;
+            transition: border-color 0.2s, transform 0.2s;
+        }
+
+        .cover-option:hover {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+
+        .cover-option.selected {
+            border-color: #34c759;
+        }
+
+        .cover-option img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .cover-modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .cover-modal-actions button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .cover-cancel-btn {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .cover-select-btn {
+            background: #667eea;
+            color: white;
+        }
+
+        .cover-loading {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+        }
+
+        .cover-empty {
+            text-align: center;
+            padding: 30px;
+            color: #999;
+        }
+
         .book-details h3 {
             font-size: 18px;
             margin-bottom: 8px;
@@ -496,7 +652,12 @@
 
             <div id="bookResult" class="book-result">
                 <div class="book-info">
-                    <img id="bookCover" class="book-cover" alt="Book cover">
+                    <div id="coverPickerTrigger" class="cover-picker-trigger" onclick="openCoverPicker()">
+                        <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                        <span>Tap to choose cover</span>
+                    </div>
                     <div class="book-details">
                         <h3 id="bookTitle"></h3>
                         <p id="bookAuthor"></p>
@@ -505,6 +666,18 @@
                     </div>
                 </div>
                 <button class="save-btn" onclick="saveBook()">Save to Library</button>
+            </div>
+
+            <!-- Cover Picker Modal -->
+            <div id="coverModal" class="cover-modal-overlay" onclick="if(event.target===this)closeCoverPicker()">
+                <div class="cover-modal">
+                    <h3>Choose a Cover</h3>
+                    <div id="coverGrid" class="cover-grid"></div>
+                    <div class="cover-modal-actions">
+                        <button class="cover-cancel-btn" onclick="closeCoverPicker()">Cancel</button>
+                        <button class="cover-select-btn" onclick="confirmCoverSelection()">Select</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -539,6 +712,10 @@
 
         // Auth state
 let currentUser = null;
+
+        // Cover picker state
+        let availableCoverIds = [];
+        let selectedCoverId = null;
 
 // Check if user is already logged in
 async function checkAuth() {
@@ -838,13 +1015,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
+                availableCoverIds = data.covers || [];
+                const firstCoverId = availableCoverIds.length > 0 ? availableCoverIds[0] : null;
+
                 currentBook = {
                     isbn: isbn,
                     title: data.title || 'Unknown Title',
                     authors: authors.length > 0 ? authors.join(', ') : 'Unknown Author',
                     publisher: data.publishers ? data.publishers.join(', ') : 'Unknown Publisher',
                     publishDate: data.publish_date || 'Unknown',
-                    coverUrl: data.covers ? `https://covers.openlibrary.org/b/id/${data.covers[0]}-M.jpg` : '',
+                    coverUrl: firstCoverId ? `https://covers.openlibrary.org/b/id/${firstCoverId}-M.jpg` : '',
                     dateAdded: new Date().toISOString()
                 };
 
@@ -862,16 +1042,120 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('bookAuthor').textContent = `By ${book.authors}`;
             document.getElementById('bookPublisher').textContent = `Publisher: ${book.publisher}`;
             document.getElementById('bookIsbn').textContent = `ISBN: ${book.isbn}`;
-            
-            const cover = document.getElementById('bookCover');
-            if (book.coverUrl) {
-                cover.src = book.coverUrl;
-                cover.style.display = 'block';
-            } else {
-                cover.style.display = 'none';
-            }
+
+            updateCoverTrigger(book.coverUrl);
 
             document.getElementById('bookResult').classList.add('show');
+        }
+
+        function updateCoverTrigger(coverUrl) {
+            const trigger = document.getElementById('coverPickerTrigger');
+            if (coverUrl) {
+                trigger.innerHTML = `
+                    <img src="${coverUrl}" alt="Book cover">
+                    <span class="cover-change-hint">Change</span>
+                `;
+            } else {
+                trigger.innerHTML = `
+                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <span>Tap to choose cover</span>
+                `;
+            }
+        }
+
+        // Cover picker functions
+        async function openCoverPicker() {
+            const modal = document.getElementById('coverModal');
+            const grid = document.getElementById('coverGrid');
+            modal.classList.add('show');
+            selectedCoverId = null;
+
+            // If we already have cover IDs from the API, show them
+            if (availableCoverIds.length > 0) {
+                renderCoverOptions(availableCoverIds);
+            } else if (currentBook && currentBook.isbn) {
+                // Try fetching covers by ISBN as fallback
+                grid.innerHTML = '<div class="cover-loading">Searching for covers...</div>';
+                try {
+                    const response = await fetch(`https://openlibrary.org/isbn/${currentBook.isbn}.json`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        availableCoverIds = data.covers || [];
+                    }
+
+                    // Also try the ISBN cover directly
+                    if (availableCoverIds.length === 0) {
+                        // OpenLibrary always has an ISBN-based cover URL we can try
+                        grid.innerHTML = `
+                            <div class="cover-option" onclick="selectIsbnCover(this)">
+                                <img src="https://covers.openlibrary.org/b/isbn/${currentBook.isbn}-M.jpg"
+                                     alt="Cover" onerror="this.parentElement.style.display='none'">
+                            </div>
+                            <div class="cover-empty">
+                                <p>Limited covers available for this book.</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    renderCoverOptions(availableCoverIds);
+                } catch (error) {
+                    grid.innerHTML = '<div class="cover-empty">Could not load covers. Please try again.</div>';
+                }
+            } else {
+                grid.innerHTML = '<div class="cover-empty">No covers available for this book.</div>';
+            }
+        }
+
+        function renderCoverOptions(coverIds) {
+            const grid = document.getElementById('coverGrid');
+            grid.innerHTML = coverIds.map(id => `
+                <div class="cover-option" data-cover-id="${id}" onclick="selectCover(this, ${id})">
+                    <img src="https://covers.openlibrary.org/b/id/${id}-M.jpg" alt="Cover option"
+                         onerror="this.parentElement.style.display='none'">
+                </div>
+            `).join('');
+
+            // Also add the ISBN-based cover as an extra option
+            if (currentBook && currentBook.isbn) {
+                grid.innerHTML += `
+                    <div class="cover-option" data-cover-isbn="${currentBook.isbn}" onclick="selectIsbnCover(this)">
+                        <img src="https://covers.openlibrary.org/b/isbn/${currentBook.isbn}-M.jpg" alt="ISBN cover"
+                             onerror="this.parentElement.style.display='none'">
+                    </div>
+                `;
+            }
+        }
+
+        function selectCover(element, coverId) {
+            document.querySelectorAll('.cover-option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedCoverId = coverId;
+        }
+
+        function selectIsbnCover(element) {
+            document.querySelectorAll('.cover-option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedCoverId = 'isbn';
+        }
+
+        function confirmCoverSelection() {
+            if (selectedCoverId && currentBook) {
+                if (selectedCoverId === 'isbn') {
+                    currentBook.coverUrl = `https://covers.openlibrary.org/b/isbn/${currentBook.isbn}-M.jpg`;
+                } else {
+                    currentBook.coverUrl = `https://covers.openlibrary.org/b/id/${selectedCoverId}-M.jpg`;
+                }
+                updateCoverTrigger(currentBook.coverUrl);
+            }
+            closeCoverPicker();
+        }
+
+        function closeCoverPicker() {
+            document.getElementById('coverModal').classList.remove('show');
+            selectedCoverId = null;
         }
 
         // Save book to library
