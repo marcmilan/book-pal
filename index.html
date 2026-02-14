@@ -987,6 +987,35 @@ document.addEventListener('DOMContentLoaded', () => {
             lookupBook(isbn);
         }
 
+        // Try Google Books API for book data
+        async function lookupGoogleBooks(isbn) {
+            const response = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+            if (!response.ok) return null;
+            const data = await response.json();
+            if (!data.items || data.items.length === 0) return null;
+            const vol = data.items[0].volumeInfo;
+            const coverUrl = vol.imageLinks
+                ? (vol.imageLinks.thumbnail || vol.imageLinks.smallThumbnail || '').replace('http://', 'https://')
+                : '';
+            return {
+                title: vol.title || 'Unknown Title',
+                authors: vol.authors ? vol.authors.join(', ') : 'Unknown Author',
+                publisher: vol.publisher || 'Unknown Publisher',
+                publishDate: vol.publishedDate || 'Unknown',
+                coverUrl: coverUrl
+            };
+        }
+
+        // Try Google Books API for a cover URL only
+        async function fetchGoogleBooksCover(isbn) {
+            try {
+                const result = await lookupGoogleBooks(isbn);
+                return result ? result.coverUrl : '';
+            } catch (e) {
+                return '';
+            }
+        }
+
         // Look up book details
         async function lookupBook(isbn) {
             showStatus('Looking up book...', 'info');
@@ -994,8 +1023,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 const response = await fetch(`https://openlibrary.org/isbn/${isbn}.json`);
-                
+
                 if (!response.ok) {
+                    // OpenLibrary doesn't have this book — try Google Books
+                    const gbData = await lookupGoogleBooks(isbn);
+                    if (gbData) {
+                        availableCoverIds = [];
+                        currentBook = {
+                            isbn: isbn,
+                            ...gbData,
+                            dateAdded: new Date().toISOString()
+                        };
+                        displayBook(currentBook);
+                        showStatus('Book found!', 'success');
+                        return;
+                    }
                     throw new Error('Book not found');
                 }
 
@@ -1055,13 +1097,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 availableCoverIds = data.covers || [];
                 const firstCoverId = availableCoverIds.length > 0 ? availableCoverIds[0] : null;
 
+                // If OpenLibrary has no cover, try Google Books
+                let coverUrl = firstCoverId ? `https://covers.openlibrary.org/b/id/${firstCoverId}-M.jpg` : '';
+                if (!coverUrl) {
+                    coverUrl = await fetchGoogleBooksCover(isbn);
+                }
+
                 currentBook = {
                     isbn: isbn,
                     title: data.title || 'Unknown Title',
                     authors: authors.length > 0 ? authors.join(', ') : 'Unknown Author',
                     publisher: data.publishers ? data.publishers.join(', ') : 'Unknown Publisher',
                     publishDate: data.publish_date || 'Unknown',
-                    coverUrl: firstCoverId ? `https://covers.openlibrary.org/b/id/${firstCoverId}-M.jpg` : '',
+                    coverUrl: coverUrl,
                     dateAdded: new Date().toISOString()
                 };
 
@@ -1140,14 +1188,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         availableCoverIds = data.covers || [];
                     }
 
-                    // Also try the ISBN cover directly
+                    // Also try the ISBN cover directly and Google Books
                     if (availableCoverIds.length === 0) {
-                        // OpenLibrary always has an ISBN-based cover URL we can try
+                        const gbCover = await fetchGoogleBooksCover(currentBook.isbn);
                         grid.innerHTML = `
                             <div class="cover-option" onclick="selectIsbnCover(this)">
                                 <img src="https://covers.openlibrary.org/b/isbn/${currentBook.isbn}-M.jpg"
                                      alt="Cover" onerror="this.parentElement.style.display='none'">
                             </div>
+                            ${gbCover ? `
+                            <div class="cover-option" onclick="selectGoogleCover(this, '${gbCover}')">
+                                <img src="${gbCover}" alt="Cover from Google Books"
+                                     onerror="this.parentElement.style.display='none'">
+                            </div>
+                            ` : ''}
                             <div class="cover-empty">
                                 <p>Limited covers available for this book.</p>
                             </div>
@@ -1196,9 +1250,19 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedCoverId = 'isbn';
         }
 
+        let selectedGoogleCoverUrl = null;
+        function selectGoogleCover(element, coverUrl) {
+            document.querySelectorAll('.cover-option').forEach(el => el.classList.remove('selected'));
+            element.classList.add('selected');
+            selectedCoverId = 'google';
+            selectedGoogleCoverUrl = coverUrl;
+        }
+
         function confirmCoverSelection() {
             if (selectedCoverId && currentBook) {
-                if (selectedCoverId === 'isbn') {
+                if (selectedCoverId === 'google' && selectedGoogleCoverUrl) {
+                    currentBook.coverUrl = selectedGoogleCoverUrl;
+                } else if (selectedCoverId === 'isbn') {
                     currentBook.coverUrl = `https://covers.openlibrary.org/b/isbn/${currentBook.isbn}-M.jpg`;
                 } else {
                     currentBook.coverUrl = `https://covers.openlibrary.org/b/id/${selectedCoverId}-M.jpg`;
