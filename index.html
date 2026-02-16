@@ -558,6 +558,73 @@
             cursor: pointer;
         }
 
+        .book-detail-summary {
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .book-detail-summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .book-detail-summary-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #999;
+            font-weight: 600;
+        }
+
+        .spoiler-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f0f0f5;
+            border: none;
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #667eea;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .spoiler-toggle:hover {
+            background: #e4e4f0;
+        }
+
+        .spoiler-toggle.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .book-detail-summary-text {
+            font-size: 15px;
+            line-height: 1.6;
+            color: #444;
+            white-space: pre-line;
+        }
+
+        .book-detail-summary-loading {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+            font-size: 14px;
+        }
+
+        .book-detail-summary-empty {
+            text-align: center;
+            padding: 20px;
+            color: #bbb;
+            font-size: 14px;
+            font-style: italic;
+        }
+
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -843,6 +910,15 @@
                         <span class="book-detail-label">Added to Library</span>
                         <span id="bookDetailAdded" class="book-detail-value"></span>
                     </div>
+                </div>
+                <div id="bookDetailSummary" class="book-detail-summary" style="display: none;">
+                    <div class="book-detail-summary-header">
+                        <span class="book-detail-summary-label">Summary</span>
+                        <button id="spoilerToggle" class="spoiler-toggle" style="display: none;" onclick="toggleSpoiler()">
+                            <span id="spoilerToggleText">Show Full Summary</span>
+                        </button>
+                    </div>
+                    <div id="bookDetailSummaryContent"></div>
                 </div>
                 <div class="book-detail-actions">
                     <button class="book-detail-delete-btn" id="bookDetailDeleteBtn">Delete from Library</button>
@@ -1604,6 +1680,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 deleteBook(book.id);
             };
 
+            // Load summary on demand
+            currentDetailBook = book;
+            loadBookSummary(book);
+
             // Hide all tabs and show detail page (keep Library tab highlighted)
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1686,6 +1766,159 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 statusEl.classList.remove('show');
             }, 3000);
+        }
+
+        // --- Book Summary / Spoiler Toggle ---
+        let currentDetailBook = null;
+        let fullDescription = '';
+        let showingFullSummary = false;
+
+        function getTeaser(text) {
+            // Return first 2 sentences or first 300 chars, whichever is shorter
+            const sentenceEnd = /[.!?]/g;
+            let count = 0;
+            let match;
+            while ((match = sentenceEnd.exec(text)) !== null) {
+                count++;
+                if (count === 2) {
+                    return text.substring(0, match.index + 1);
+                }
+            }
+            // Fewer than 2 sentences — truncate at 300 chars if needed
+            if (text.length <= 300) return text;
+            const cutoff = text.lastIndexOf(' ', 300);
+            return text.substring(0, cutoff > 0 ? cutoff : 300) + '...';
+        }
+
+        function isTeaserDifferent(text) {
+            return getTeaser(text).length < text.length;
+        }
+
+        function renderSummary() {
+            const contentEl = document.getElementById('bookDetailSummaryContent');
+            const toggleBtn = document.getElementById('spoilerToggle');
+            const toggleText = document.getElementById('spoilerToggleText');
+
+            if (!fullDescription) {
+                contentEl.innerHTML = '<div class="book-detail-summary-empty">No summary available for this book.</div>';
+                toggleBtn.style.display = 'none';
+                return;
+            }
+
+            const hasSpoilerOption = isTeaserDifferent(fullDescription);
+            toggleBtn.style.display = hasSpoilerOption ? 'inline-flex' : 'none';
+
+            if (hasSpoilerOption && !showingFullSummary) {
+                contentEl.innerHTML = `<div class="book-detail-summary-text">${getTeaser(fullDescription)}</div>`;
+                toggleBtn.classList.remove('active');
+                toggleText.textContent = 'Show Full Summary';
+            } else {
+                contentEl.innerHTML = `<div class="book-detail-summary-text">${fullDescription}</div>`;
+                if (hasSpoilerOption) {
+                    toggleBtn.classList.add('active');
+                    toggleText.textContent = 'Hide Spoilers';
+                }
+            }
+        }
+
+        function toggleSpoiler() {
+            showingFullSummary = !showingFullSummary;
+            renderSummary();
+        }
+
+        async function fetchBookDescription(isbn) {
+            let description = '';
+
+            // 1. Try Open Library edition → works endpoint for description
+            try {
+                const editionRes = await fetch(`https://openlibrary.org/isbn/${isbn}.json`);
+                if (editionRes.ok) {
+                    const editionData = await editionRes.json();
+
+                    // Check if the edition itself has a description
+                    if (editionData.description) {
+                        description = typeof editionData.description === 'string'
+                            ? editionData.description
+                            : editionData.description.value || '';
+                    }
+
+                    // If not, try the work
+                    if (!description && editionData.works && editionData.works.length > 0) {
+                        const workRes = await fetch(`https://openlibrary.org${editionData.works[0].key}.json`);
+                        if (workRes.ok) {
+                            const workData = await workRes.json();
+                            if (workData.description) {
+                                description = typeof workData.description === 'string'
+                                    ? workData.description
+                                    : workData.description.value || '';
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                // Open Library failed, will try Google Books
+            }
+
+            // 2. Fallback to Google Books
+            if (!description) {
+                try {
+                    const gbRes = await fetch(`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}`);
+                    if (gbRes.ok) {
+                        const gbData = await gbRes.json();
+                        if (gbData.items && gbData.items.length > 0) {
+                            description = gbData.items[0].volumeInfo.description || '';
+                        }
+                    }
+                } catch (e) {
+                    // Google Books also failed
+                }
+            }
+
+            // Strip HTML tags that Google Books sometimes includes
+            if (description) {
+                const tmp = document.createElement('div');
+                tmp.innerHTML = description;
+                description = tmp.textContent || tmp.innerText || '';
+            }
+
+            return description.trim();
+        }
+
+        async function loadBookSummary(book) {
+            const summarySection = document.getElementById('bookDetailSummary');
+            const contentEl = document.getElementById('bookDetailSummaryContent');
+            const toggleBtn = document.getElementById('spoilerToggle');
+
+            summarySection.style.display = 'block';
+            fullDescription = '';
+            showingFullSummary = false;
+            toggleBtn.style.display = 'none';
+
+            // If we already have a cached description in Supabase, use it
+            if (book.description) {
+                fullDescription = book.description;
+                renderSummary();
+                return;
+            }
+
+            // Otherwise, fetch on demand
+            contentEl.innerHTML = '<div class="book-detail-summary-loading">Fetching summary...</div>';
+
+            const description = await fetchBookDescription(book.isbn);
+            fullDescription = description;
+            renderSummary();
+
+            // Cache it in Supabase so we don't re-fetch next time
+            if (description && book.id) {
+                try {
+                    await supabaseClient
+                        .from('books')
+                        .update({ description: description })
+                        .eq('id', book.id);
+                } catch (e) {
+                    // Caching failed silently — not critical
+                }
+            }
         }
 
         // Event listeners
